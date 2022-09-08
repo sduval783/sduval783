@@ -1,5 +1,6 @@
 - 👋 Hi, I’m @sduval783
-- Senior mechanical engineering student with concentration in Controls and aeronautial
+- Senior mechanical engineering student with concentration in Controls and aeronautics
+    - Wish to work in avionics and/or GNC
 
 - Experience in:
 -  Python, C++, C, MATLAB
