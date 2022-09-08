@@ -6,7 +6,7 @@
     - Tkinter GUI developement 
 -  Unix, Windows
 
-- 📫 How to reach me: sam.duval@icloud, snd18b@fsu.edu
+- 📫 How to reach me: snd18b@fsu.edu
 
 <!---
 sduval783/sduval783 is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
