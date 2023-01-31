@@ -1,0 +1,118 @@
+clc
+close all
+clear all
+
+% Underwater glider 2D model, V1
+% Internal mass moves linearly to change the position of the C.o.G to cause
+% pitch.
+% Ballast volume varies to change the bouyancy of the device to cause it to
+% dive or surface. This acts to change the displaced mass of the vehicle
+
+g = 9.81;  % gravity
+
+length_submersible = 1;  % [m]
+diameter_submersible = 0.25;  % [m]
+volume_submersible_dry = length_submersible*pi*(diameter_submersible/2)^2;  % volume of submersible with no ballast [m^3]
+
+submersible_mass = 40;  % mass of the body [kg]
+internal_mass = 5;  % mass of the attitude controller [kg]
+ballast_volume = [0, 0.10*volume_submersible_dry];  % volume of water in the ballast tank, changes depending on dive/surfacing requirements [m^3]
+
+rho_water = 1000;  % Density of water is fairly constant [kg/m^3]
+ballast_mass = ballast_volume*rho_water;
+
+F_buoyancy_dry = rho_water*volume_submersible_dry*g;  % bouyant force of the dry submersible [N]
+F_buoyancy_ballast = rho_water*ballast_volume*g;  % bouyant force of the ballast at empty and full [N]
+F_sum_bouyancy = F_buoyancy_dry - F_buoyancy_ballast;  % [N]
+
+total_mass = submersible_mass + internal_mass + ballast_mass;
+total_weight = total_mass*g;
+
+bouyant_force = F_sum_bouyancy - total_weight;  % dive if submersible weight is greater than bouyant force
+
+init_depth = 0;  % surface [m] above max depth
+final_depth = -5;  % Max depth [m]
+init_velo = 0;  % starts stationary [m/s]
+tspan = 1000; % ode time
+
+% Force_x = F_lift*cos(alpha)- F_drag; 
+% Force_y = bouyant_force;
+
+% linear_pos_internal_mass = linspace(-1,1)
+
+dive_option = odeset('events', @check_max_depth, 'refine', 10);
+surface_option = odeset('events', @check_surface, 'refine', 10);
+% call ode45 for the initial bounce
+dive_glide_surface_flag = -1;  % -1 dive, 0 glide, 1 surface
+%[T,Y] = ode45(@(t,y)dive(t,y,bouyant_force,total_mass,dive_glide_surface_flag), [0 tspan], [init_depth-25 init_velo], surface_option);
+[T,Y] = ode45(@(t,y)dive(t,y,bouyant_force,total_mass,dive_glide_surface_flag), [0 tspan], [init_depth init_velo], dive_option);
+ts = T;
+ys = Y;
+% 
+for i = 1:10
+    dive_glide_surface_flag = 1;
+    [T,Y] = ode45(@(t,y)dive(t,y,bouyant_force,total_mass,dive_glide_surface_flag), [ts(end) ts(end)+1000], [ys(end,1) ys(end,2)], surface_option);
+    ts = [ts; T];  % concatenate the times
+    ys = [ys; Y];  % concatenate the ys
+
+    dive_glide_surface_flag = -1;
+    [T,Y] = ode45(@(t,y)dive(t,y,bouyant_force,total_mass,dive_glide_surface_flag), [ts(end) ts(end)+1000], [ys(end,1) ys(end,2)], dive_option);
+    ts = [ts; T];  % concatenate the times
+    ys = [ys; Y];  % concatenate the ys
+end
+
+
+pgon = polyshape([0 0 ts(end) ts(end)],[0 final_depth-5 final_depth-5 0]);
+color = [0 0 1];
+plot(pgon,FaceColor=color)
+hold on
+plot(ts(:), ys(:,1), 'r')
+ylabel('Depth(m)')
+xlabel('Time (s)')
+xlim([0 ts(end)])
+ylim([-10 1])
+
+
+
+function func = dive(t,y,bouyant_force,m,dive_glide_surface_flag)  % solves ode
+    % y(1) and y(2) are passed into our function as
+    % parameter y
+    y1 = y(1); % y1 = theta
+    y2 = y(2); % y2 = thetadot
+    y1p = y2;  % y1p (y1 prime) = y2 = thetadot
+    
+    switch dive_glide_surface_flag
+        case -1
+            y2p = bouyant_force(2)/m(2);  % dive case
+        case 0
+            y2p = 0;  % glide case
+        case 1
+            y2p = bouyant_force(1)/m(1);  % surface case
+    end
+    
+    if y1 >= -0.25/2
+       y2p = -9.81;
+       %disp('herer')
+    end
+
+    func = [y1p; y2p]; % return
+end
+
+function [check, isterminal, direction] = check_max_depth(t,y)
+    check = y(1) + 2.5;
+    isterminal = 1;
+    direction = 0;
+end
+
+function [check, isterminal, direction] = check_surface(t,y)
+    check = y(1) + 2.5;
+    isterminal = 1;
+    direction = 0;
+end
+
+
+
+
+
+
+
